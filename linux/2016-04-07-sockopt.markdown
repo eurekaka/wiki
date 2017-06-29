@@ -1,0 +1,139 @@
+* two socket options: `TCP_NODELAY` and `TCP_CORK`
+
+	First of all not both of them disables Nagle's algorithm.
+
+	Nagle's algorithm is for reducing more number of small network packets in
+	wire. The algorithm is: if data is smaller than a limit (usually MSS), wait
+	until receiving ACK for previously sent packets and in the mean time
+	accumulate data from user. Then send the accumulated data.
+
+	```
+	if [ data > MSS ]
+	    send(data)
+	else
+	    wait until ACK for previously sent data and accumulate data in send
+		buffer (data) And after receiving the ACK send(data)
+	```
+
+	This will help in applications like telnet. However, waiting for the ACK may
+	increase latency when sending streaming data. Additionally, if the receiver
+	implements the 'delayed ACK policy', it will cause a temporary deadlock
+	situation. In such cases, disabling Nagle's algorithm is a better option.
+
+	So TCP_NODELAY is used for disabling Nagle's algorithm.
+
+	`TCP_CORK` aggressively accumulates data. If `TCP_CORK` is enabled in a socket,
+	it will not send data until the buffer fills to a fixed limit. Similar to
+	Nagle's alogirthm, it also accumulates data from user but until the buffer
+	fills to a fixed limit not until receiving ACK. This will be useful while
+	sending multiple blocks of data. But you have to be more careful while using
+	TCP_CORK.
+
+	Until 2.6 kernel, both of these options are mutually exclusive. But in later
+	kernel, both of them can exist together. In such case, TCP_CORK will be
+	given more preference.
+
+* BLOCKING and NON_BLOCKING socket
+
+	* For TCP, A call to send has three possible outcomes:
+		* There is at least one byte available in the send buffer, send succeeds and returns the number of bytes accepted (possibly fewer than you asked for).
+		* The send buffer is completely full at the time you call send.
+			* if the socket is blocking, send blocks
+			* if the socket is non-blocking, send fails with EWOULDBLOCK/EAGAIN
+		* An error occurred (e.g. user pulled network cable, connection reset
+			by peer), send fails with another error
+
+	* Does this mean that for blocking TCP, the send() call will always return immediately if there is enough room in the kernel send buffer for the sending data?
+		* Yes. As long as immediately means after the memory you provided it
+			has been copied to the kernel's buffer.
+
+	* For blocking sockets, both TCP and UDP will block until there's
+		space in the kernel buffer. The distinction however is that the UDP socket
+		will wait until your entire buffer can be stored in the kernel buffer,
+		whereas the TCP socket may decide to only copy a single byte into the kernel
+		buffer (typically it's more than one byte though).
+
+		If you try to send packets that are larger than 64kiB, a UDP socket will
+		likely consistently fail with EMSGSIZE. This is because UDP, being a
+		datagram socket, guarantees to send your entire buffer as a single IP packet
+		or not send it at all.
+
+* TCP_NODELAY is just an optimization inside send buffer on the packet level,
+	it has no direct relationship with BLOCK and `NON_BLOCK`;
+
+* FD_CLOEXEC
+	It sets the close-on-exec flag for the file descriptor, which causes the
+	file descriptor to be automatically (and atomically) closed when any of the
+	exec-family functions succeed. This is useful to keep from leaking your file
+	descriptors to random programs.
+
+	difference between `FD_CLOEXEC` and `SOCK_CLOEXEC`:
+
+	Normally if you want the file descriptor to be close-on-exec you'd first
+	obtain the file descriptor in some way, then call fcntl(fd, `F_SETFD`, `FD_CLOEXEC`).
+	But in a threaded program there is a possibility for a race condition between
+	getting that file descriptor and setting the CLOEXEC flag. Therefore Linux has
+	recently changed most (if not all) system calls that return new file descriptors
+	to also accept flags that tell the kernel to atomically set the close-on-exec flag
+	before making the file descriptor valid. That way the race condition is closed. That
+	is what `SOCK_CLOEXEC` used for.
+
+* A coding convention is to set the options of the socket after getting one
+	before using it;
+
+* KEEPALIVE can be set using setsockopt per socket;
+
+	Setting KEEPALIVE would not affect the behavior at all, if KEEPALIVE detects
+	the other end to be dead, then kernel would not notify user space;
+
+	You'll get the same result if you enable `SO_KEEPALIVE`, as if you don't
+	enable `SO_KEEPALIVE`. Typically you'll find the socket ready and get an
+	error when you read from it.
+
+	`SO_KEEPALIVE` makes the kernel more aggressive about continually verifying
+	the connection even when you're not doing anything, but does not change or
+	enhance the way the information is delivered to you. You'll find out when
+	you try to actually do something (for example "write"), and you'll find out
+	right away since the kernel is now just reporting the status of a previously
+	set flag, rather than having to wait a few seconds (or much longer in some
+	cases) for network activity to fail. 
+
+	To modify the number of probes or the probe intervals, you write values to
+	the /proc filesystem like
+
+	```
+	echo 600 > /proc/sys/net/ipv4/tcp_keepalive_time
+	echo 60 > /proc/sys/net/ipv4/tcp_keepalive_intvl
+	echo 20 > /proc/sys/net/ipv4/tcp_keepalive_probes
+	```
+	
+	Note that these values are global for all keepalive enabled sockets on
+	the system, You can also override these settings on a per socket basis
+	when you set the setsockopt.
+
+* SIGPIPE would happen if try to write to a socket, while the connection of
+	the socket has been closed by the peer end;
+
+	Q: SIGPIPE can only occur as the result of a write(), which can (and does)
+	return -1 and set errno to EPIPE... So why do we have the extra overhead of
+	a signal? Every time I work with pipes I ignore SIGPIPE and have never felt
+	any pain as a result, am I missing something?
+
+	A: I think it is to get the error handling correct without requiring a lot of
+	code in everything writing to a pipe. Some programs ignore the return value of
+	write(); without SIGPIPE they would uselessly generate all output.
+
+	For read, if the peer close the connection gracefully, then read/recv would
+	return 0 indicating that the connection has been closed;
+
+	POLLHUP means the connection has been closed as well;
+
+	EOF is a macro defined as an int with a negative value.
+
+* We have three methods of blocking SIGPIPE during send() calls to this socket:
+	*	setsockopt(sock, SO_NOSIGPIPE)
+	*	send(sock, ..., MSG_NOSIGNAL)
+	*	setting the signal mask to SIG_IGN during
+	
+	The third method requires three syscalls per, so we prefer either of the first
+	two, but they less portable.
