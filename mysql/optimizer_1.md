@@ -30,7 +30,8 @@
     test_quick_select --> compute full scan cost
                       |__ init PARAM
                       |__ traverse head.s.keys, compare with keys_to_use, add to PARAM
-                      |__ get_mm_tree --> get_full_func_mm_tree --> get_func_mm_tree --> get_mm_parts(new SEL_TREE) --> get_mm_leaf
+                      |__ get_mm_tree --> recursive get_mm_tree call based on predicate, e.g, AND, OR
+                                      |__ (simplest case)get_full_func_mm_tree --> get_func_mm_tree --> get_mm_parts(new SEL_TREE) --> get_mm_leaf
 	```
 
 * key is index(struct KEY), key_part is part of the indexed columns
