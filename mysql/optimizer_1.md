@@ -14,25 +14,26 @@
 * optimizer trace gives greate info about call stack;
 * best_acess_path would choose between range type and other types(ref, etc);
 * optimizer call stack:
-	```
-	optimize --> make_join_plan --> estimate_rowcount --> get_quick_record_count --> test_quick_select(range optimizer entry) --> find potential range indexes
-			 |					|																							  |__ get_mm_tree: range analysis module
-		     |				    |																							  |__ get_key_scans_params(SEL_TREE) --> check_quick_select(SEL_ARG)
-		     |				    |__ Optimize_table_order::choose_table_order --> greedy_search --> best_extension_by_limited_search --> best_access_path
-		     |					  																								    |__ best_extension_by_limited_search
-		     |__ make_join_select --> attach conditions to table
-		     |__ make_join_readinfo --> push_index_cond
-	```
+    ```
+    optimize --> make_join_plan --> estimate_rowcount --> get_quick_record_count --> test_quick_select(range optimizer entry) --> find potential range indexes
+             |                  |                                                                                             |__ get_mm_tree: range analysis module
+             |                  |                                                                                             |__ get_key_scans_params(SEL_TREE) --> check_quick_select(SEL_ARG)
+             |                  |__ Optimize_table_order::choose_table_order --> greedy_search --> best_extension_by_limited_search --> best_access_path
+             |                                                                                                                      |__ best_extension_by_limited_search
+             |__ make_join_select --> attach conditions to table
+             |__ make_join_readinfo --> push_index_cond
+    ```
 
 * test_quick_select
-	```
-	test_quick_select --> compute full scan cost
-					  |__ init PARAM
-					  |__ traverse head.s.keys, compare with keys_to_use, add to PARAM
-					  |__ get_mm_tree --> get_full_func_mm_tree --> get_func_mm_tree --> get_mm_parts(new SEL_TREE) --> get_mm_leaf
+    ```
+    test_quick_select --> compute full scan cost
+                      |__ init PARAM
+                      |__ traverse head.s.keys, compare with keys_to_use, add to PARAM
+                      |__ get_mm_tree --> get_full_func_mm_tree --> get_func_mm_tree --> get_mm_parts(new SEL_TREE) --> get_mm_leaf
 	```
 
 * key is index(struct KEY), key_part is part of the indexed columns
 * SEL_TREE.keys[] is for AND(conjunctions), each element in keys[] is a SQL_ARG graph(OR, disjunctions); each element of keys[] is a index; OR between different indexes
   are recorded in merges[], each element is a OR representation, elements are AND-ed;
 * index merge intersect for keys[], and index merge union for merges[];
+* multi-elements OR is a list, not a recursive implementation
