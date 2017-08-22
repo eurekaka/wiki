@@ -11,7 +11,7 @@
 * preprocessing(constants) => join order => group by => order by
 * SEL_IMERGE --> SEL_TREE --> SEL_ARG
 * will order be considered when choosing access path? XXX
-* optimizer trace gives greate info about call stack;
+* optimizer trace gives great info about call stack;
 * best_acess_path would choose between range type and other types(ref, etc);
 * optimizer call stack:
     ```
@@ -35,7 +35,8 @@
 	```
 
 * key is index(struct KEY), key_part is part of the indexed columns
-* SEL_TREE.keys[] is for AND(conjunctions), each element in keys[] is a SQL_ARG graph(OR, disjunctions); each element of keys[] is a index; OR between different indexes
+* SEL_TREE.keys[] is for AND(conjunctions), each element in keys[] is a SEL_ARG graph(OR, disjunctions); each element of keys[] is a index; OR between different indexes
   are recorded in merges[], each element is a OR representation, elements are AND-ed;
 * index merge intersect for keys[], and index merge union for merges[];
 * multi-elements OR is a list, not a recursive implementation
+* ICP(Index Condition Pushdown) basically applies to index like (c1,c2,c3) while the WHERE condition is like "c1=xx and c2 like '%yy%' and c3 like '%zz%'", so c2 and c3 cannot be in range qualifier;
