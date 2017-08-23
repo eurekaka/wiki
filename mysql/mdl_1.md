@@ -113,3 +113,17 @@
         Ticket_list m_waiting; // waiting threads for this lock, check next_in_lock
     }
     ```
+* Init of MDL subsystem:
+
+    ```
+    #0 MDL_map::init
+    #1 mdl_init
+    #2 init_server_components
+    #3 mysqld_main
+    #4 main
+    ```
+* MDL lock acquire:
+
+    ```
+    acquire_lock --> try_acquire_lock_impl
+    ```
