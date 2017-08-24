@@ -1,18 +1,22 @@
 * Linux after 2.6 implements Posix pthread interfaces in nptl(native posix thread library), previously,
   it is LinuxThreads; the libpthread is a single library, while the source code is in the glibc;
-* pthread mutex uses futex(2) for implementation, similar to semaphore; bare futex(2) is a system call to
-  utilize the kernel sleep/wake-up mechanism(similar assembly code as PG), normally when saying "futex operation
-  is entirely userspace for the non-contended case", they are referring to the user space assembly code of semaphore
-  and pthread mutex, not the real futex(2) system call;
+* pthread mutex uses futex(2) for implementation, similar to posix semaphore(sem_post(3), implemented in
+  glibc, while system V semaphore is a system call semop(2); glibc also has a difinition of semop, not shown
+  in man page, but in source code, it is a wrapper of ipc(2) system call for invoking semop(2)); bare futex(2)
+  is a system call to utilize the kernel sleep/wake-up mechanism(similar assembly code as PG), normally
+  when saying "futex operation is entirely userspace for the non-contended case", they are referring to
+  the user space assembly code of semaphore and pthread mutex, not the real futex(2) system call;
 * pthread mutex lock call stack(glibc/nptl/ source code):
   
   ```
   __pthread_mutex_lock --> LLL_MUTEX_LOCK(macro) --> lll_lock(mutex->__data.__lock) --> assembly checking contension
                                                                                     |__ __lll_lock_wait --> lll_futex_wait(macro) --> lll_futex_timed_wait(macro) --> syscall futex
   ```
-* LWLock manages waiting list by itself, while using semaphore for process sleep/wake up; pthread mutex hands over waiting list management and sleep/wake up to kernel through futex;
-  From performance perspective, there should be no much difference;
-* pthread_spinlock_t is an integer(volatile), and is in pure user space; pthread_spin_lock is implemented in simple assembly code;
+* LWLock manages waiting list by itself, while using semaphore for process sleep/wake up; pthread mutex hands over
+  waiting list management and sleep/wake up to kernel through futex; From performance perspective, there should
+  be no much difference;
+* pthread_spinlock_t is an integer(volatile), and is in pure user space; pthread_spin_lock is implemented in
+  simple assembly code;
 * In typical use, a condition expression is evaluated under the protection of a mutex lock.
   When the condition expression is false, the thread blocks on the condition variable. The
   condition variable is then signaled by another thread when it changes the condition value.
@@ -54,8 +58,8 @@
   {
       pthread_mutex_lock(&count_lock);
       count = count + 1;
+      pthread_cond_signal(&count_nonzero); // must before unlock mutex, to explicitly ensure an order of wait/signal, otherwise, it is hard to say which one comes first, hence hard to predict the behaviour
       pthread_mutex_unlock(&count_lock);
-      pthread_cond_signal(&count_nonzero);
   }
   ```
 * pthread_cond_signal awake only one thread waiting on the condition, the scheduling policy
@@ -86,8 +90,8 @@
   // thread B
   pthread_mutex_lock(mtx);   // b1
   flag = 1;                  // b2
-  pthread_mutex_unlock(mtx); // b3
-  pthread_cond_signal(cv);   // b4
+  pthread_cond_signal(cv);   // b3
+  pthread_mutex_unlock(mtx); // b4
   ```
 
   then for execution sequence a1, a2, a3, b1, b2, b3, b4, a4, thread A would not be awaken, because
@@ -115,9 +119,12 @@
   * pthread_spinlock_t: assembly for tas, no sleep/wake up;
   * pthread_mutex_t: assembly for tas, futex for sleep/wake up;
   * pthread_cond_t:
-      * for the __lock protecting the cond struct members: assembly for tas, futex for sleep/wake up(lll_lock, as pthread_mutex_t)
+      * for the __lock protecting the cond struct members: assembly for tas, futex for sleep/wake
+                                                           up(lll_lock, as pthread_mutex_t)
       * for the condition logic, futex for sleep/wake up;
   * spin lock in pg: assembly for tas, no sleep/wake up;
   * LWLock in pg: spin lock for tas, semaphore for sleep/wake up;
   * Lock in pg: LWLock for tas, Latch for sleep/wake up;
   * Latch in pg: signal/pipe/poll for sleep/wake up;
+* pthread_rwlock_t, pthread_rwlock_init, pthread_rwlock_rdlock, pthread_rwlock_wrlock, similar as pthread_mutex_t,
+  but it supports read/write mode; assembly code for tas, futex for sleep/wake up;
