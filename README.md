@@ -1,3 +1,3 @@
 # wiki
 
-* contact info: yaokenan3@163.com
+* contact info: cauchy1992@gmail.com
