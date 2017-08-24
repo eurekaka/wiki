@@ -7,7 +7,6 @@
 * ix? XXX
 * SU is like SR, cannot write data, but: 1)can be upgraded to SNW, SNRW, X, then it can write data freely; 2) SU is incompatible with SU(and above);
 * In MySQL, schema means database;
-* GLOBAL and COMMIT is scoped lock namespace, others are object lock namespace;
 * MDL_key is a triple: namespace_dbname_table, stored in m_ptr(char array)
 * SELECT * FROM tbl;
     * open_table_get_mdl_lock: TABLE:SR:TRX
