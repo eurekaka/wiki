@@ -4,7 +4,6 @@
 * One can only acquire TL_READ, TL_READ_NO_INSERT, etc table-level locks if holding SR MDL lock on the table;
 * All shared MDL lock can allow reading on metadata, including SNRW; lock holder of SNRW can read and write data, as long as it holds the table lock and row lock;
 * If modifing metadata, then X lock is needed;
-* ix? XXX
 * SU is like SR, cannot write data, but: 1)can be upgraded to SNW, SNRW, X, then it can write data freely; 2) SU is incompatible with SU(and above);
 * In MySQL, schema means database;
 * MDL_key is a triple: namespace_dbname_table, stored in m_ptr(char array)

@@ -16,8 +16,11 @@
     ```
     MDL_context::find_deadlock --> while(1) --> Deadlock_detection_visitor // each round would spot one victim, remove one node from graph
                                             |__ MDL_context::visit_subgraph --> MDL_ticket::accept_visitor --> MDL_lock::visit_subgraph --> mysql_prlock_rdlock(&m_rwlock)
+                                            |                                                                                           |__ enter_node // depth++, if overflow, terimate and say deadlock found
                                             |                                                                                           |__ BFS direct neibors, including granted and waiting, inspect_edge() --> check if it is starting MDL_context
                                             |                                                                                           |__ DFS neibors, including granted and waiting, recursive MDL_context::visit_subgraph
+                                            |                                                                                           |__ leave_node // depth--
                                             |                                                                                           |__ mysql_prlock_unlock
                                             |__ set victim m_waiting_status VICTIM
     ```
+* The whole deadlock detection is a depth-constrained DFS, with a 1-hop BFS optimization;
