@@ -54,7 +54,7 @@
         //member functions implementing lock acquire/release logics;
         MDL_wait m_wait; //use this for waiting
         Ticket_list m_tickets; // locks acquired by this thread, check next_in_context
-        MDL_wait_for_subgraph *m_waiting_for; // the lock waiting for
+        MDL_wait_for_subgraph *m_waiting_for; // the lock waiting for, only one
     }
 
     class MDL_map
