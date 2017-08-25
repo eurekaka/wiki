@@ -9,6 +9,7 @@
       pin[2] is the final pin; @sa my_lfind() for the classic double check, and how pin[0], pin[1]
       are used; therefore, each lf_hash_search() call must have a lf_hash_search_unpin before it
       can call next lf_hash_search(); or the second lf_hash_search() would override the first pin[2];
+      @sa comments of lf_hash_search() for mandatory usage;
     * lf_hash_get_pins(LF_HASH *lf_hash); // get one from lf_hash->alloc.pinbox
     * lf_hash_search(LF_HASH *lf_hash, LF_PINS *pins); // pin[2] valid
     * lf_hash_search_unpin(LF_PINS *pins); // set pin[2] 0
@@ -19,4 +20,4 @@
       which is ensured by CAS atomic pointer assignment logic, and pins; there is no concurrent
       element pointer update now, the update is inplace, protected by m_rwlock of MDL_lock; hence,
       semantically, it is safe to using an old version when the latest is NULL now, because old version
-      must be 'unused' now;
+      must be 'unused' now(though it may still be referenced, that is the value of pin);
