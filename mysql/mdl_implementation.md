@@ -98,7 +98,7 @@
     ```
     acquire_lock --> try_acquire_lock_impl --> find_ticket // check if we have already hold this lock, MDL_contex::m_tickets, similar to PG locallock
                  |                         |__ clone_ticket // if duration is not same
-                 |                         |__ fix_pins // allocate harzard pointer for lock-free hash access
+                 |                         |__ fix_pins // get LF_PINS for lock-free hash access
                  |                         |__ MDL_ticket::create // m_lock is null now
                  |                         |__ get_unobtrusive_lock_increment
                  |                         |__ retry label
@@ -126,7 +126,6 @@
                  |__ check wait_status and clean up
     ```
 
-* lock free hash implementation? harzard pointer? pin? XXX
 * For object locks, unobtrusive modes: S, SH, SR and SW, compatible with each other, commonly used by DML, can fall into fast path; for scoped locks,
   unobtrusive modes: IX;
 * GCC provides built-in atomic functions, like say __atomic_compare_exchange_n(type *ptr, type *expected, type *desired, ...),
