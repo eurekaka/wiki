@@ -9,8 +9,15 @@
                |__ pfs_end_metadata_wait_v1 // modify global_metadata_stat, or insert into table events_waits_history, events_waits_history_long, PFS_thread.m_instr_class_waits_stats;
                |__ pfs_set_metadata_lock_status_v1 // modify PFS_metadata_lock
 * struct with PSI_ prefix is an abstract of v1 and v2, they are opaque structs, no definition, just for variable passing, must be reinterpreted in each implementation
+
 * each PSI submodule has a struct PFS_instr_class, e.g, global_metadata_class, which records whether the submodule is enabled; inited in register_global_classes()
-  besides, MDL has a single statistic class PFS_single_stat global_metadata_stat
+  besides, MDL has a single instrument class PFS_single_stat global_metadata_stat
+
+  ```
+  #0 register_global_classes
+  #1 initialize_performance_schema
+  #2 mysqld_main
+  ```
 
 * where does information stored?
 
@@ -48,3 +55,6 @@
   #8 mysql_parse
   #9 dispatch_command
   ```
+
+* VICTIM, KILLED and TIMEOUT status? where does this recorded? XXX
+* GET_LOCK() implementation? locking service? XXX
