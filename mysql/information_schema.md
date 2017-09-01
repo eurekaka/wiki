@@ -113,3 +113,22 @@
 
   traverse THD for query plan
   ```
+
+* MDL_lock, MDL_ticket, MDL_context, MDL_wait, MDL_key, MDL_duration, MDL_type
+* pfs acquire locks when updating status?
+  find_ticket for reference interate Ticket_list
+  PG iterates PROCLOCK with all partition locks held
+  materialize_fast_path_locks?
+  m_LOCK_wait_status?
+
+* two options for reading all tickets:
+  * iterate global variable mdl_locks
+    mdl_locks is LF_HASH, so we can not get consistent view of whole hash table without a lock, for
+    example, we iterate the hash table while someone insert one element, we cannot get this into account;
+    not to mention the LF_HASH is not designed for sequential iterating(remove_random_unused() would
+    randomly dive into the hash table, not iterating); LF_HASH also contains pointers which are marked as
+    deleted(IS_DESTROYED), or are unused;
+  * iterate THD.mdl_context
+    mdl_context.m_tickets and m_waiting_for is updated only by the thread itself, with no lock protection;
+    so no consistent snapshot we can take even for a single thread, not to mention for all threads;
+  * lock free code path means we cannot take consistent snapshot at all.

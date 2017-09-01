@@ -41,6 +41,8 @@
 
   select * from events_waits_current/events_waits_history/events_waits_history_long; // stages, statements, transactions, waits
 
+* each ticket(PROCLOCK) would have one PFS_metadata_lock, stored in global_mdl_container, so easy to read MDL snapshot;
+
 * what does 'update setup_instruments' do? update perfschema storage engine table, change global_metadata_class.m_enabled value in memory
 
   ```

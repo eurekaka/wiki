@@ -24,3 +24,10 @@
                                             |__ set victim m_waiting_status VICTIM
     ```
 * The whole deadlock detection is a depth-constrained DFS, with a 1-hop BFS optimization;
+* rwlocks in deadlock detection:
+  * MDL_context::visit_subgraph would grab m_LOCK_waiting_for before calling MDL_ticket::accept_visitor, and release it after getting back;
+  * MDL_lock::visit_subgraph would grab m_rwlock before starting BFS and DFS, and release it after getting back;
+  * hence during the traverse, all the m_LOCK_waiting_for and m_rwlock would be held at same time for a single path; when backtracing and
+    pop out nodes from the path, corresponding locks would be released;
+  * These locks are enough for deadlock detector to get a corrent snapshot, because lock free fast path cannot lead to new waiting relationship;
+    while slow paths are protected by m_rwlock, timeout waits are protected by m_LOCK_waiting_for
