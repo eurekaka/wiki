@@ -112,3 +112,4 @@
   ```
 
 * reference my_lfind for traversing list in LF_HASH
+* every element of the hash table can be found in bucket 0, due to the dummy node added in initialize_bucket();

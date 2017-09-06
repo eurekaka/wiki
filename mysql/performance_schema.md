@@ -3,6 +3,8 @@
 
 * try_acquire_lock_impl --> mysql_mdl_create --> inline_mysql_mdl_create --> PSI_server(PSI_v1 type)->create_metadata_lock(create_metadata_lock_v1_t type) --> pfs_create_metadata_lock_v1() --> create_metadata_lock()
 * create_metadata_lock --> global_mdl_container.allocate() // PFS_mdl_container, aka, PFS_buffer_container<PFS_metadata_lock>, remove one from m_array
+  PFS_buffer_default_array::allocate, a lock(pfs_lock) to protect element object, but whole array is not protected; allocation is protected by atomic index computation and pfs_lock;
+  pfs_lock is stored in PFS_instr, which is the base class of all instruments, like say PFS_metadata_lock;
 
   allocate memory to store the information
 * acquire_lock --> pfs_start_metadata_wait_v1 // modify PSI_metadata_locker_state(thread local), and PFS_thread.m_events_waits_current(PFS_thread stored by pthread_setspecific()), or global_metadata_stat
@@ -41,7 +43,7 @@
 
   select * from events_waits_current/events_waits_history/events_waits_history_long; // stages, statements, transactions, waits
 
-* each ticket(PROCLOCK) would have one PFS_metadata_lock, stored in global_mdl_container, so easy to read MDL snapshot;
+* each ticket would have one PFS_metadata_lock, stored in global_mdl_container, so easy to read MDL snapshot;
 
 * what does 'update setup_instruments' do? update perfschema storage engine table, change global_metadata_class.m_enabled value in memory
 
@@ -58,5 +60,9 @@
   #9 dispatch_command
   ```
 
-* VICTIM, KILLED and TIMEOUT status? where does this recorded? XXX
+* VICTIM, KILLED and TIMEOUT status? Not recorded actually;
 * GET_LOCK() implementation? locking service? XXX
+
+* PFS can catch the fast path status change;
+  PFS cannot get a complete snapshot of MDL(PFS_buffer_container is not locked);
+  PFS cannot get a consistent snapshot of MDL(not locking MDL_lock);
