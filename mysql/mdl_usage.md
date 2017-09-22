@@ -24,7 +24,7 @@
     * open_tables --> lock_table_names: TABLE:SU:TRX
     * open_tables --> open_and_process_table --> open_table: GLOBAL:IX:STMT
     * open_tables --> open_and_process_table --> open_table --> open_tabl_get_mdl_lock: TABLE:SU:TRX
-    * mysql_alter_table --> mysql_inplace_alter_table --> upgrate_shared_lock: TABLE:X:TRX(choosing IN PLACE branch, no SNW lock)
+    * mysql_alter_table --> mysql_inplace_alter_table --> upgrade_shared_lock: TABLE:X:TRX(choosing IN PLACE branch, no SNW lock)
     * mysql_alter_table --> mysql_inplace_alter_table --> downgrade_lock: TABLE:SU:TRX
     * mysql_alter_table --> mysql_inplace_alter_table --> wait_while_table_is_used --> upgrate_shared_lock: TABLE:X:TRX
     * ha_commit_trans: COMMIT:IX:EXPLICIT
