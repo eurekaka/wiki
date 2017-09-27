@@ -109,3 +109,6 @@
   MTR may modify several pages, these pages would be written a same LSN of the MTR(a MTR has only one LSN, for all redo logs inside the MTR)
 
 * MTR has no rollback mechanism; MTR would acquire page lock on buffer pages, to make LSN on these pages consistent;
+
+* function adding 3 system columns: dict_table_add_system_columns()
+* RR would acquire snapshot(ReadView) for a transaction; RC would acquire snapshot for a statement;
