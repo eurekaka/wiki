@@ -63,8 +63,11 @@
 
   ha_innobase::external_lock --> update_thd
                              |__ m_prebuit->sql_stat_start = true; //IMPORTANT
-                             |__ innobase_register_trx
+                             |__ check m_prebuilt->table->quiesce and call state functions
                              |__ decide m_prebuilt->select_lock_type //LOCK_X or LOCK_S
+                             |__ call row_lock_table_for_mysql only for LOCK TABLES if 'autocommit=0' and 'innodb_lock_tables=1' --> lock_table
+                             |__ trx->mysql_n_tables_locked++
+                             |__ ++trx->will_lock
                              |__ TrxInInnoDB::begin_stmt, then return
                              |__ unlock branch, would call innobase_commit if it is autocommit, and call trx_sys->mvcc->view_close if <= READ_COMMITTED, m_mysql_has_locked = false;
 
