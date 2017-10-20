@@ -152,8 +152,11 @@
 
 * failed tests: rpl.rpl_semi_sync_shutdown_hang
   rpl.rpl_semi_sync_wait_slave_count
+  main.ssl
+  perfschema.socket_connect
+  perfschema.socket_instances_func
 
-* tests: kill_idle_transaction_timeout
+* XXX tests: kill_idle_transaction_timeout
 
 * how to enable SSL of mysqld?
   * first compile mysqld with -DWITH-SSL=...; verify SSL is compiled by `select @@have_ssl;`, not 'NO', should be 'DISABLED'
@@ -185,3 +188,6 @@
   is set in handle_event, so you have to wait extra time spent in ssl->has_data before this connection is removed;
 
   AliSQL passes main.ssl by making all localhost connections using per-thread scheduler, while percona passes this test by requring TLS 1.2
+
+* vio_cancel instead of vio_shutdown, vio_shutdown would close socket, so mysqld cannot receive the last packet exchange, and so threadpool_process_request cannot
+  be called to check the KILL_CONNECTION and return 1, so connection_abort cannot be called;
