@@ -150,14 +150,6 @@
 
 * to run regression tests with a sys var for all test cases, specify it in "--mysqld=--thread-handling=pool-of-threads" of mysql_test_run.pl
 
-* failed tests: rpl.rpl_semi_sync_shutdown_hang
-  rpl.rpl_semi_sync_wait_slave_count
-  main.ssl
-  perfschema.socket_connect
-  perfschema.socket_instances_func
-
-* XXX tests: kill_idle_transaction_timeout
-
 * how to enable SSL of mysqld?
   * first compile mysqld with -DWITH-SSL=...; verify SSL is compiled by `select @@have_ssl;`, not 'NO', should be 'DISABLED'
   * then start mysqld with options:
@@ -191,3 +183,10 @@
 
 * vio_cancel instead of vio_shutdown, vio_shutdown would close socket, so mysqld cannot receive the last packet exchange, and so threadpool_process_request cannot
   be called to check the KILL_CONNECTION and return 1, so connection_abort cannot be called;
+
+* ```
+  vio->has_data --> vio_ssl_has_data -->SSL_pending --> SSL_peek --> receiveData --> ssl.HasData
+                                                                                 |__ processReply --> DoProcessReply --> receive --> yassl_recv --> vio_read --> mysql_socket_recv
+                                                                                                                                                             |__ vio_socket_io_wait(vio->read_timeout) --> vio_io_wait --> poll
+  vio_timeout()
+  ```
