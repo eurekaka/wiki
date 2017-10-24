@@ -181,12 +181,16 @@
 
   AliSQL passes main.ssl by making all localhost connections using per-thread scheduler, while percona passes this test by requring TLS 1.2
 
+  thread-per-connection does not have this "connection lost" bug because it set the timeout to 20 days for poll;
+
 * vio_cancel instead of vio_shutdown, vio_shutdown would close socket, so mysqld cannot receive the last packet exchange, and so threadpool_process_request cannot
   be called to check the KILL_CONNECTION and return 1, so connection_abort cannot be called;
 
 * ```
   vio->has_data --> vio_ssl_has_data -->SSL_pending --> SSL_peek --> receiveData --> ssl.HasData
                                                                                  |__ processReply --> DoProcessReply --> receive --> yassl_recv --> vio_read --> mysql_socket_recv
-                                                                                                                                                             |__ vio_socket_io_wait(vio->read_timeout) --> vio_io_wait --> poll
+                                                                                                                     |                                       |__ vio_socket_io_wait(vio->read_timeout) --> vio_io_wait --> poll
+                                                                                                                     |                                       
+                                                                                                                     |__ if read == -1, ssl.SetError
   vio_timeout()
   ```
