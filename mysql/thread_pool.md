@@ -194,3 +194,12 @@
                                                                                                                      |__ if read == -1, ssl.SetError
   vio_timeout()
   ```
+
+* use --debug for mysqld to enable DBUG_PRINT, the trace output is in /tmp/mysqld.trace
+
+* if thread-pool-oversubscribe is 2 and thread-pool-size is 1, in first connection, set debug_sync='ib_after_row_insert SIGNAL others WAIT_FOR continue_others',
+  and execute `insert into t1 values(NULL)` (t1 is innodb table with auto_increment), so this session would hang in debug_sync_execute with a lock held;
+  then the second session executes `insert into t1 values(NULL)`, so this session would hang waiting for the lock; for the third session, it cannot
+  loggin, because the login event would be put into low priority queue in queue_put, though timer thread would mark the group as stalled and start a new
+  thread in check_stall, this thread in get_event --> queue_get would cannot get the login event, because it is in low priority queue and the group has
+  too many busy threads now; @sa mysql-test/suite/innodb/t/innodb_deadlock_with_autoinc.test
