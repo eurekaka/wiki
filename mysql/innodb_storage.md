@@ -8,6 +8,9 @@
   backgroud thread; change buffer is part of buffer pool, may take 1/2 of buffer pool; those unmerged
   change buffer in memory would be written to insert buffer in system tablespace when necessary
 
+  for cases like 'update table set col1 = xxx where pkey =yyy', much ramdom IO is needed for updating secondary
+  index on col1, so insert into change buffer and merge them later;
+
 * Adaptive Hash Index(AHI): InnoDB monitors index searches, and if it notices that queries would benifit
   from building a hash index, it does so automatically;(usually when table can fit into memory); hash index
   can be partial, i.e, only contains part of tuples for a table;
@@ -27,15 +30,15 @@
 
 * why MySQL uses double write?
   * partial write failure; DB page is 8k or 16k, while OS page is normally 4k;
-  * physiological redo logging; (logical logging inside DB page, requires DB page consistent)
+  * physiological redo logging; (logical logging inside DB page, requires DB page consistent; physiological redo logging
+    relies on lsn of the page to guarantee the idempotence, if lsn of the page is not consistent with data rows in the page,
+    then we may have duplicate ++ for data rows in recovery, hence causing data corruption)
 
 * how double write solves partial write problem?
   * partial write can only happen either in doublewrite buffer, or in original file;
   * in recovery, if doublewrite buffer page is inconsistent, discard it and apply redo log based on original file contents(it must
     be valid now); if original file page is inconsistent, recover it from doublewrite buffer;
   * consistency is inferred by checksum of page(buf_page_is_corrupted());
-
-* recovery of physiological logging? XXX
 
 * comparison of logical logging, physical logging, and physiological logging:
   * all of them are WAL;
