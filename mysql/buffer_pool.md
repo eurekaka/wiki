@@ -41,3 +41,9 @@
 
 * concurrent read of one page not in memory: check page hash to see whether the page is in memory, if not allocate a chunk of page, then check page hash again, if another
   thread has put one page into page hash, then free the page just allocated and call buf_wait_for_read to wait for the loading of the page; sync is done by IO_READ flag;
+
+* dirty pages are in both LRU list and flush list;
+* part of the redo logs of a transaction are inserted into redo buffer, and even flushed to disk, even before transaction commit; that is why the COMMIT of a big transaction
+  is fast;
+* entry point for innodb master thread is srv_master_thread: redo log buffer flush, insert buffer merge; buffer page flush is moved to page cleaner thread, and undo clean up
+  is moved to purge thread;

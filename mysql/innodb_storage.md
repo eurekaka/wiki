@@ -66,9 +66,6 @@
   in singly-linked list of "overflow pages", each column has one such list; such column is called "off-page column";
   sometimes, prefix of the column would be stored in the B-tree, depends on different row format config;
 
-* default page size 16k, extent size 1MB, 64 consecutive pages; segment is something like logical file; two segments
-  are allocated for each index, one for nonleaf nodes, one for leaf nodes;
-
 * before commiting, we have to fsync table data to disk; before fsync table data to disk, we have to fsync undo log
   to disk, because if we fsync table data first, and crash happens in the middle step, so we cannot commit this trx
   in recovery, we have to rollback trx, which version of table data to rollback to? so we have to fsync undo log
@@ -115,3 +112,25 @@
 
 * function adding 3 system columns: dict_table_add_system_columns()
 * RR would acquire snapshot(ReadView) for a transaction; RC would acquire snapshot for a statement;
+
+* insert buffer can cause long recovery period; insert buffer must be used on secondary index and the index is not unique, otherwise we have to check the unique constraint and
+  incurs random IO; by default, insert buffer can at most use half of buffer pool
+
+* insert buffer is implemented as a large B-tree, all secondary indexes for all tables are in one single B-tree, reside in system table space; key of this B-tree is
+  tablespace_id+offset of the tuple; to reserve the tablespate_id+offset in the secondary index for tuples in the insert buffer, we maintain a insert buffer bitmap for recording;
+
+* statement binlog format can cause inconsistency between master and slave, such as update trigger in select would not be logged, and rand function may have different value;
+* mysqlbinlog -vv can give more readable information for row-format binlog
+* view would have a separate frm file, in text format, contains the definition of the view;
+
+* tablespace, segment, extent and page are all logical concepts, default page size 16k, extent size 1MB, 64 consecutive pages;
+  tablespace contains data segment(clustered index, aka leaf node segment), secondary index segment(aka non-leaf node segment), rollback segment, etc;
+
+* page has type, e.g, off-page column can store data like BLOB in a separate page with specific type;
+* MRR(Multi-Range Read): when querying secondary index, instead of get one secondary index tuple and then get its tuple in clustered index, we put the secondary index tuples
+  into a buffer, and sort those tuples by row_id, then query clustered index;
+
+* unlike fulltext index of PG, mysql uses inverted index, key is keyword, value is ilist(DocumentId, Posision); insert tuple would write the kvs into a FTS index cache, not
+  into auxiliary table directly, merge is done when querying auxiliary table; kind of like insert buffer
+
+  FTS_DOC_ID column is added by innodb internally for fulltext search, FTS_DOC_ID_INDEX(unique index) as well

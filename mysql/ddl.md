@@ -17,10 +17,6 @@
 * table rows of InnoDB are stored in a clustered index organized based on primary key;
   secondary index of MySQL: key is indexed columns, value is primary key;
 
-* when DDL operations on primary key uses algorithm=inplace, data rows would still be copied, but its performance
-  should exceed algorithm=copy as well for 3 reasons, one is that, there is no undo and redo logging for inplace
-  algorithm;
-
 * adding a secondary index would first scan the table, and then sort rows, and then build B-tree bottom-up; this is
   more efficient than inserting rows into B-tree in random order, and has higher fill-factor in B-tree node;
 
