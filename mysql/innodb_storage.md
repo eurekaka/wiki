@@ -90,7 +90,7 @@
     that is to say, several redo logs may be logically atomic, such as B-tree split, during recovery, either all of such redo logs
     are applied, or none of them;
   * such redo logs would be writen into mtr log buffer, not redo log buffer directly; and when this group of operations are complete,
-    mtr log buffer is dumped into redo log buffer, so redo logs of mts is placed together inside redo log buffer and specially marked;
+    mtr log buffer is dumped into redo log buffer, so redo logs of mtr is placed together inside redo log buffer and specially marked;
 
 * format of innodb undo log(logical logging, thus having partial execution problem of undo log record):
   <record_type>+<table_id>+<data>
@@ -130,7 +130,10 @@
 * MRR(Multi-Range Read): when querying secondary index, instead of get one secondary index tuple and then get its tuple in clustered index, we put the secondary index tuples
   into a buffer, and sort those tuples by row_id, then query clustered index;
 
-* unlike fulltext index of PG, mysql uses inverted index, key is keyword, value is ilist(DocumentId, Posision); insert tuple would write the kvs into a FTS index cache, not
+* mysql uses inverted index for FT index, key is keyword, value is ilist(DocumentId, Posision); insert tuple would write the kvs into a FTS index cache, not
   into auxiliary table directly, merge is done when querying auxiliary table; kind of like insert buffer
 
   FTS_DOC_ID column is added by innodb internally for fulltext search, FTS_DOC_ID_INDEX(unique index) as well
+
+* in 5.6, undo log would be marked as invalid by purge thread, but the disk space would not be recycled, and the disk space would be reused, so undo space would be larger
+  and larger with time going by; in 5.7, undo log can be truncated;
