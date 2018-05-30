@@ -29,7 +29,8 @@
 * optimizer call stack:
   ```
   optimize --> make_join_plan --> extract_func_dependent_tables --> join_read_const_table
-           |                  |__ estimate_rowcount --> get_quick_record_count --> test_quick_select(range optimizer entry) --> find potential range indexes
+           |                  |__ estimate_rowcount --> add_group_and_distinct_keys
+           |                  |                     |__ get_quick_record_count --> test_quick_select(range optimizer entry) --> find potential range indexes
            |                  |                                                                                             |__ get_mm_tree: range analysis module
            |                  |                                                                                             |__ get_key_scans_params(SEL_TREE) --> check_quick_select(SEL_ARG)
            |                  |__ Optimize_table_order::choose_table_order --> greedy_search --> best_extension_by_limited_search --> best_access_path(for one table) --> find_best_ref
@@ -38,6 +39,8 @@
            |                  |__ get_best_combination //build JOIN_TAB according to the join order
            |__ make_join_select --> attach conditions to table
            |__ make_join_readinfo --> push_index_cond
+           |__ make_tmp_tables_info --> make_group_fields
+                                    |__ get_end_select_func
   ```
 
 * test_quick_select
