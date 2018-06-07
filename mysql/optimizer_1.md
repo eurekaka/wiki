@@ -22,7 +22,7 @@
 
 * optimizer will use index for "col like 'x%'", but not for "col like '%x'", that is,
   when the first char of the pattern is wildcard;
-* preprocessing(constants) => join order => group by => order by
+* preprocessing(constants) => range optimizer => join order => group by
 * SEL_IMERGE --> SEL_TREE --> SEL_ARG
 * optimizer trace gives great info about call stack;
 * best_acess_path would choose between range type and other types(ref, etc);
@@ -48,15 +48,17 @@
   test_quick_select --> compute full scan cost
                     |__ init PARAM
                     |__ traverse head.s.keys, compare with keys_to_use, add to PARAM
-                    |__ get_mm_tree --> recursive get_mm_tree call based on predicate, e.g, AND, OR
-                                    |__ (simplest case)get_full_func_mm_tree --> get_func_mm_tree --> get_mm_parts(new SEL_TREE) --> get_mm_leaf
+                    |__ get_mm_tree --> recursive get_mm_tree call based on predicate, e.g, AND, OR //get_mm_tree is for SEL_TREE build and simplification
+                    |               |__ tree_and/tree_or: would do the merge of intervals --> key_or/key_and
+                    |               |__ check tree->type == SEL_TREE::IMPOSSIBLE/SEL_TREE::ALWAYS
+                    |               |__ (simplest case)get_full_func_mm_tree --> get_func_mm_tree --> get_mm_parts(new SEL_TREE) --> get_mm_leaf
+                    |__ get_key_scans_params(SEL_TREE) --> check_quick_select(SEL_ARG) //check_quieck_select calculate number of rows satisfying the specific index SEL_ARG,
+                                                                                       //get_key_scans_params calculate cost and compare with full table scan
   ```
 
 * key is index(struct KEY), key_part is part of the indexed columns
 * SEL_TREE.keys[] is for AND(conjunctions), each element in keys[] is a SEL_ARG graph(OR, disjunctions); each element of keys[] is a index; OR between different indexes
   are recorded in merges[], each element is a OR representation, elements are AND-ed;
-* index merge intersect for keys[], and index merge union for merges[];
-* multi-elements OR is a list, not a recursive implementation
 * ICP(Index Condition Pushdown) basically applies to index like (c1,c2,c3) while the WHERE condition is like "c1=xx and c2 like '%yy%' and c3 like '%zz%'", so c2 and c3 cannot be in range qualifier;
 
 * Index Merge algorithm:
