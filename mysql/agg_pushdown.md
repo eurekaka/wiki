@@ -65,3 +65,20 @@
 * agg pushdown means computation logic is pushed down to engine, hence type definition as well;
 
 * we only need 9 bytes to store the agg result, first byte for NULL bits;
+
+* intrinsic table is internal temporary table; user created temporary table is not intrinsic table, it uses row_search_mvcc
+* callstack of scan:
+
+  ```
+  full table scan:
+  rr_sequential -> ha_rnd_next -> rnd_next -> index_first -> index_read
+                                           |_ general_fetch
+
+  index scan:
+  sub_select -> join_read_first -> ha_index_first -> index_first -> index_read
+             |_ join_read_next -> ha_index_next -> index_next -> general_fetch
+
+  general pattern is:
+  -> index_read (first call) -> row_search_mvcc
+  |_ general_fetch -> row_search_mvcc
+  ```
