@@ -52,7 +52,7 @@
                     |               |__ tree_and/tree_or: would do the merge of intervals --> key_or/key_and
                     |               |__ check tree->type == SEL_TREE::IMPOSSIBLE/SEL_TREE::ALWAYS
                     |               |__ (simplest case)get_full_func_mm_tree --> get_func_mm_tree --> get_mm_parts(new SEL_TREE) --> get_mm_leaf
-                    |__ get_key_scans_params(SEL_TREE) --> check_quick_select(SEL_ARG) //check_quieck_select calculate number of rows satisfying the specific index SEL_ARG,
+                    |__ get_key_scans_params(SEL_TREE) --> check_quick_select(SEL_ARG) //check_quick_select calculate number of rows satisfying the specific index SEL_ARG,
                                                                                        //get_key_scans_params calculate cost and compare with full table scan
   ```
 
