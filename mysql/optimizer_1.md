@@ -72,3 +72,12 @@
   ```
   code is in QUICK_ROR_INTERSECT_SELECT::get_next(), each range scan is QUICK_RANGE_SELECT::get_next(), row is in head->record[0]
   ROR is Rowid-Ordered-Retrieval
+
+* if query has multiple ranges, and optimizer chooses range scan, e.g, 'b > 1 and b < 3 or b > 100' has 2 ranges, then in execution,
+  it would first do range scan of 'b > 1 and b < 3', after this scan reaches end of file, then 'b > 100' range scan would start;
+  this is implementated in function handler::multi_range_read_next, that is to say, row_search_mvcc is called multiple 'rounds', this
+  is very IMPORTANT;
+
+  same applies to tables having multiple partitions;
+
+* MySQL cursor can only be used in stored procedure!!!
