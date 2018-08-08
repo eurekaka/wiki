@@ -9,5 +9,17 @@
 
 * executor callstack:
   ```
-  session::executeStatement -> runStmt -> ExecStmt::Exec
+  session::executeStatement -> runStmt -> ExecStmt::Exec -> ExecStmt::buildExecutor -> newExecutorBuilder
+                                                         |                          |_ executorBuilder::build -> executorBuilder::buildInsert -> build InsertExec //wrap up Insert plan node
+                                                         |_ InsertExec::Open //nop
+                                                         |_ ExecStmt::handleNoDelayExecutor -> InsertExec::Next -> InsertExec::getColumns
+                                                                                                                |_ InsertValues::insertRows -> InsertValues::getRow -> Constant::Eval
+                                                                                                                                            |_ InsertExec::exec -> InsertExec::insertOneRow -> tableCommon::AddRecord
+
+  tableCommon::AddRecord -> get recordId
+                         |_ tableCommon::addIndices -> index::Create -> index::GenIndexKey //build index-row key
+                         |                                           |_ RetriverMutator.Set //write index-row key and value(recordID)
+                         |_ tableCommon::RecordKey -> EncodeRecordKey
+                         |_ EncodeRow
+                         |_ txn.Set
   ```
