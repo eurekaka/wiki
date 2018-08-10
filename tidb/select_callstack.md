@@ -11,10 +11,14 @@
                     |           |                                                 |                              |_ SetChildren //LogicalSelection as the parent node
                     |           |                                                 |_ planBuilder::buildProjection //LogicalProjection as the parent node
                     |           |                                                 |_ return LogicalPlan
-                    |           |_ doOptimize -> logicalOptimize
-                    |                         |_ physicalOptimize
+                    |           |_ doOptimize -> logicalOptimize //apply rules, columnPruner, projectionEliminater, and ppdSolver usually, in recursive style
+                    |                         |_ physicalOptimize -> baseLogicalPlan::preparePossibleProperties //recursively
+                    |                                             |_ baseLogicalPlan::findBestPlan //recursively
+                    |                                             |_ basePhysicalPlan::ResolveIndices //recursively
                     |_ build ExecStmt
 
+  DataSource::PredicatePushDown -> ExpressionsToPB
+  LogicalSelection::PredicatePushDown would return child, i.e, DataSource, hence remove LogicalSelection node from the tree
   interface inheritance relationship:
   Plan -> LogicalPlan
        |_ PhysicalPlan
