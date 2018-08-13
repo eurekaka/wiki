@@ -12,13 +12,23 @@
                     |           |                                                 |_ planBuilder::buildProjection //LogicalProjection as the parent node
                     |           |                                                 |_ return LogicalPlan
                     |           |_ doOptimize -> logicalOptimize //apply rules, columnPruner, projectionEliminater, and ppdSolver usually, in recursive style
-                    |                         |_ physicalOptimize -> baseLogicalPlan::preparePossibleProperties //recursively
-                    |                                             |_ baseLogicalPlan::findBestPlan //recursively
+                    |                         |_ physicalOptimize -> ::deriveStats
+                    |                                             |_ ::findBestTask -> ::exhaustPhysicalPlans //multiple implementations for agg, join, sort etc
+                    |                                             |                 |_ foreach pp, combine it with best children tasks(::attach2Task), compute the best task with least cost
                     |                                             |_ basePhysicalPlan::ResolveIndices //recursively
                     |_ build ExecStmt
 
   DataSource::PredicatePushDown -> ExpressionsToPB
-  LogicalSelection::PredicatePushDown would return child, i.e, DataSource, hence remove LogicalSelection node from the tree
+  LogicalSelection::PredicatePushDown would return child, i.e, DataSource, hence remove LogicalSelection node from the tree in addSelection()
+
+  DataSource::findBestTask -> foreach accessPath DataSource::convertToTableScan -> PhysicalTableScan
+                                                                                |_ copTask
+                                                                                |_ PhysicalTableScan::addPushedDownSelection -> PhysicalSelection
+                                                                                |                                            |_ SetChildren
+                                                                                |                                            |_ copTask.tablePlan = sel
+                                                                                |_ finishCopTask -> rootTask
+                                                                                                 |_ PhysicalTableReader
+
   interface inheritance relationship:
   Plan -> LogicalPlan
        |_ PhysicalPlan
@@ -27,6 +37,8 @@
   basePlan -> baseLogicalPlan
            |_ basePhysicalPlan
   ```
+
+* Q: join table order? combinations?
 
 * executor callstack:
   ```
