@@ -52,3 +52,5 @@
   - call Accept method for children nodes
   - Visitor::Leave
   comparatively, Accept is walker, Visitor is mutator;
+
+* Why we need executor build? to convert general physical plan to operators of tikv;

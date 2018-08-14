@@ -13,9 +13,10 @@
                     |           |                                                 |_ return LogicalPlan
                     |           |_ doOptimize -> logicalOptimize //apply rules, columnPruner, projectionEliminater, and ppdSolver usually, in recursive style
                     |                         |_ physicalOptimize -> ::deriveStats
-                    |                                             |_ ::findBestTask -> ::exhaustPhysicalPlans //multiple implementations for agg, join, sort etc
-                    |                                             |                 |_ foreach pp, combine it with best children tasks(::attach2Task), compute the best task with least cost
-                    |                                             |_ basePhysicalPlan::ResolveIndices //recursively
+                    |                         |                   |_ ::findBestTask -> ::exhaustPhysicalPlans //multiple implementations for agg, join, sort etc
+                    |                         |                   |                 |_ foreach pp, combine it with best children tasks(::attach2Task), compute the best task with least cost
+                    |                         |                   |_ ::ResolveIndices //set Column::Index in the plan tree, according to Schema
+                    |                         |_ eliminatePhysicalProjection -> canProjectionBeEliminatedStrict //Schema() exactly same as child
                     |_ build ExecStmt
 
   DataSource::PredicatePushDown -> ExpressionsToPB
@@ -36,23 +37,26 @@
   struct inheretance:
   basePlan -> baseLogicalPlan
            |_ basePhysicalPlan
+
+  Plan::Schema() represents the output fields of this operator
   ```
 
-* Q: join table order? combinations?
+* XXX: join table order? combinations?
 
 * executor callstack:
   ```
   session::executeStatement -> runStmt -> ExecStmt::Exec -> ExecStmt::buildExecutor -> newExecutorBuilder
-                                                         |                          |_ executorBuilder::build -> executorBuilder::buildInsert -> build InsertExec //wrap up Insert plan node
-                                                         |_ InsertExec::Open //nop
-                                                         |_ ExecStmt::handleNoDelayExecutor -> InsertExec::Next -> InsertExec::getColumns
-                                                                                                                |_ InsertValues::insertRows -> InsertValues::getRow -> Constant::Eval
-                                                                                                                                            |_ InsertExec::exec -> InsertExec::insertOneRow -> tableCommon::AddRecord
+                                                         |                          |_ executorBuilder::build -> executorBuilder::buildTableReader
+                                                         |_ TableReaderExecutor::Open -> TableReaderExecutor::buildResp -> distsql.Select -> Client::Send
+                                                         |                                                              |                 |_ selectResult
+                                                         |                                                              |_ selectResult::Fetch -> go selectResult::fetch //async, using goroutine pool, write results into chan
+                                                         |_ recordSet
 
-  tableCommon::AddRecord -> get recordId
-                         |_ tableCommon::addIndices -> index::Create -> index::GenIndexKey //build index-row key
-                         |                                           |_ RetriverMutator.Set //write index-row key and value(recordID)
-                         |_ tableCommon::RecordKey -> EncodeRecordKey
-                         |_ EncodeRow
-                         |_ txn.Set
+  executorBuilder::buildTableReader -> buildNoRangeTableReader -> executorBuilder::constructDAGReq -> constructDistExec -> foreach PhysicalPlan ::ToPB
+                                    |                          |_ TableReaderExecutor
+                                    |_ TableReaderExecutor::ranges = PhysicalTableScan::Ranges
+
+  clientConn::handleQuery -> session::Execute
+                          |_ clientConn::writeResultSet -> clientConn::writeChunks -> tidbResultSet::Next -> ... -> selectResult::Next //read chan
+                                                                                   |_ clientConn::writePacket
   ```
