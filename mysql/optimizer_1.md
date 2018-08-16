@@ -33,7 +33,8 @@
            |                  |                     |__ get_quick_record_count --> test_quick_select(range optimizer entry) --> find potential range indexes
            |                  |                                                                                             |__ get_mm_tree: range analysis module
            |                  |                                                                                             |__ get_key_scans_params(SEL_TREE) --> check_quick_select(SEL_ARG)
-           |                  |__ Optimize_table_order::choose_table_order --> greedy_search --> best_extension_by_limited_search --> best_access_path(for one table) --> find_best_ref
+           |                  |__ Optimize_table_order::choose_table_order --> merge_sort
+           |                  |                                            |__ greedy_search --> best_extension_by_limited_search --> best_access_path(for one table) --> find_best_ref
            |                  |                                                                                                   |                                   |__ compare with range and full scan
            |                  |                                                                                                   |__ best_extension_by_limited_search
            |                  |__ get_best_combination //build JOIN_TAB according to the join order

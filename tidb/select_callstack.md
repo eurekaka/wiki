@@ -41,7 +41,7 @@
   Plan::Schema() represents the output fields of this operator
   ```
 
-* XXX: join table order? combinations?
+* XXX: join table order? combinations? //handled by joinReOrderSolver in logical optimization
 
 * executor callstack:
   ```
