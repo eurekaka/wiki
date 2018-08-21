@@ -33,3 +33,10 @@
   In function `HashJoinExec::runJoinWorker -> HashJoinExec::join2Chunk`, for the outer rows not satisfying
   outer filters, joinResultGenerator::onMissMatch is called, this row may be outputed if this is left outer join
   for example; this is why the outer filters cannot be pushed down to coprocessor;
+
+* allocate a chunk:
+  ```
+  NewChunkWithCapacity -> new Chunk
+  					   |_ Chunk::addColumnByFieldType -> getFixedLen
+					   							      |_ Chunk::addFixedLenColumn/Chunk::addVarLenColumn
+  ```
