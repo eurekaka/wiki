@@ -30,3 +30,18 @@
   CMSketch of one column or one index, then compute the final selectivity of all expressions as product
   of previously computed selectivities; the split uses greedy algorithm and int64 as bitset to record
   covered expressions(that is why we have a constraint of no more than 63 expressions);
+  index histogram and pk histogram is preferred for a range expression in selectiviy estimation, because
+  they are accurate;
+
+* function `SampleCollector::collect` implements the sampling for ordinary column, and function `BuildColumn`
+  inserts sampled rows into histogram;
+* query feedback:
+  ```
+  //collect feedback info, each query would produce feedback
+  TableRangesToKVRanges/IndexRangesToKVRanges -> Histogram::SplitRange //before distsql to tikv, set up the query feedback
+  selectResult::getSelectResp -> QueryFeedBack::Update //for rows returned from tikv in distsql, update real count in query feedback
+
+  //update histogram according to collected feedback info in a background goroutine
+  Handle::UpdateStatsByLocalFeedback -> UpdateHistogram -> splitBuckets //match splitted ranges with bucket boundaries
+  														|_ mergeBuckets
+  ```
