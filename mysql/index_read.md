@@ -71,3 +71,9 @@
                                                                                                                                                                              |                                                                                                                                                                                                                                                                                                                                                                         |__ row_search_for_mysql --> trx_assign_read_view
                                                                                                                                                                              |__ else info->read_record
   ```
+
+* inheritance relationship:
+  ```
+  batchChecker -> InsertValues -> ReplaceExec
+  							   |_ InsertExec
+  ```
