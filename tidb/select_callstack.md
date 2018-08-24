@@ -22,13 +22,22 @@
   DataSource::PredicatePushDown -> ExpressionsToPB
   LogicalSelection::PredicatePushDown would return child, i.e, DataSource, hence remove LogicalSelection node from the tree in addSelection()
 
-  DataSource::findBestTask -> foreach accessPath DataSource::convertToTableScan -> PhysicalTableScan
-                                                                                |_ copTask
-                                                                                |_ PhysicalTableScan::addPushedDownSelection -> PhysicalSelection
-                                                                                |                                            |_ SetChildren
-                                                                                |                                            |_ copTask.tablePlan = sel
-                                                                                |_ finishCopTask -> rootTask
-                                                                                                 |_ PhysicalTableReader
+  DataSource::findBestTask -> for tablePath DataSource::convertToTableScan -> PhysicalTableScan
+                           |                                               |_ copTask
+                           |                                               |_ PhysicalTableScan::addPushedDownSelection -> PhysicalSelection
+                           |                                               |                                            |_ SetChildren
+                           |                                               |                                            |_ copTask.tablePlan = sel
+                           |                                               |_ finishCopTask -> add table scan cost
+						   |																|_ rootTask
+                           |                                                                |_ PhysicalTableReader
+						   |_ for indexPath DataSource::convertToIndexScan -> PhysicalIndexScan
+						   												   |_ copTask
+																		   |_ PhysicalTableScan if not covering index //stored in copTask::tablePlan, used in finishCopTask to decide reader type
+																		   |_ PhysicalTableScan::addPushedDownSelection
+																		   |_ finishCopTask -> copTask::finishIndexPlan //add cost of index scan
+																		   					|_ add table scan cost
+																							|_ rootTask
+																							|_ PhysicalIndexReader/PhysicalIndexLookUpReader
 
   interface inheritance relationship:
   Plan -> LogicalPlan
@@ -47,7 +56,7 @@
   ```
   session::executeStatement -> runStmt -> ExecStmt::Exec -> ExecStmt::buildExecutor -> newExecutorBuilder
                                                          |                          |_ executorBuilder::build -> executorBuilder::buildTableReader
-                                                         |_ TableReaderExecutor::Open -> TableReaderExecutor::buildResp -> distsql.Select -> Client::Send
+                                                         |_ TableReaderExecutor::Open -> TableReaderExecutor::buildResp -> distsql.Select -> CopClient::Send
                                                          |                                                              |                 |_ selectResult
                                                          |                                                              |_ selectResult::Fetch -> go selectResult::fetch //async, using goroutine pool, write results into chan
                                                          |_ recordSet

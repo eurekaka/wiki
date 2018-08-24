@@ -27,3 +27,6 @@
 
 * buildKeySolver and ::buildKeyInfo is to pull up info about unique indices from children node, and combine them with Schema() of itself,
   to tell upper node a information: for the output of this node, the columns in Keys  maintains the uniqueness;
+
+* pushDownTopN would first convert LogicalLimit into LogicalTopN, and remove the child LogicalSort node, then
+  push down this TopN node to the top of DataSource usually;
