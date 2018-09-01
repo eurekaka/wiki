@@ -95,3 +95,8 @@
   order requirement is not satisfied for stream agg and merge join;
 
   LogicalJoin::tryToGetIndexJoin may return nil if no index satisfies the join condition;
+
+* LogicalApply is for correlated subquery, would be transformed into PhysicalApply and then NestedLoopApplyExec,
+  in `NestedLoopApplyExec::Next`, for each outer tuple, set the value of correlated column through `outerSchema`,
+  then rerun the inner node; the difference of NestedLoopApplyExec b/w NLJ is the param setting from outer tuple;
+  LogicalApply is a subclass of LogicalJoin!

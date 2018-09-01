@@ -24,9 +24,47 @@
   cartesian join query; PG generates optimal join plan due to the Dynamic Programing implementation;
 
 * ppd would terminate when coming across LogicalLimit and LogicalMaxOneRow
+  for LogicalMaxOneRow, consider this query:
+  ```
+  select * from t where t.a > (select a from tbl);
+  ```
+  a LogicalMaxOneRow would be added over the subquery, and this part of LogicalPlan would be evaluated
+  immediately if it is incorrelated subquery, that is to say, this subquery would be executed first to get
+  results, the MaxOneRowExec check is done here; @sa handleScalarSubquery
+  if the subquery is correlated, for example:
+  ```
+  select * from t where t.a > (select tbl.a from tbl where tbl.b > t.b);
+  ```
+  a LogicalApply with LeftOuterJoin is built, and a LogicalSelection `t.a > tbl.a` would be added on top of
+  LogicalApply, so MaxOneRowExec is executed in the innerPlan of NestedLoopApplyExec;
+
+  For queries like:
+  ```
+  select * from t where t.a in (select a from tbl);
+  ```
+  they belong to another story, no LogicalMaxOneRow in the plan, because the subquery can return multiple
+  rows now, this would be built to semi-join, or transformed into inner join over aggregation; @sa handleInSubquery
 
 * buildKeySolver and ::buildKeyInfo is to pull up info about unique indices from children node, and combine them with Schema() of itself,
   to tell upper node a information: for the output of this node, the columns in Keys  maintains the uniqueness;
 
 * pushDownTopN would first convert LogicalLimit into LogicalTopN, and remove the child LogicalSort node, then
   push down this TopN node to the top of DataSource usually;
+
+* ast.exprNode -> expression.Expression: planBuilder::build -> buildSelect -> buildSelection -> rewrite (example)
+
+* semi-join IN can be converted to EXIST correlated subquery point scan, but it has no help for physical plan,
+  because both semi-join and correlated subquery are expensive, and they both would be implemented as
+  PhysicalApply/NestedLoopApplyExec(@sa handleExistSubquery), no efficiency improvement; we should convert
+  semi-join to inner-join over aggregation, inner join would always choose better physical plan than
+  semi-join; another approach is to compute the result of subquery first(must be un-correlated, and subquery
+  result should be smaller compared with left table), then optimizer can choose better physical plan over
+  this IN expression.
+
+* only 4 structs implement Expression interface:
+  - Constant
+  - Column
+  - ScalarFunction
+  - CorrelatedColumn: subclass of Column
+
+* decorrelateSolver is to convert LogicalApply of incorrelated inner plan into InnerJoin;

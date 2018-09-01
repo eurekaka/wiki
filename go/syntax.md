@@ -52,8 +52,10 @@
   find . -name "*.go" -print > cscope.files
   ```
 
-* func (n *FooStr) FooFunc() {} here n is a pointer, but use . to access fields; in Go, pointer and struct both
+* func (n \*FooStr) FooFunc() {} here n is a pointer, but use . to access fields; in Go, pointer and struct both
   uses . to access fields, compiler knows what you mean, -> is for channel;
+  func (n FooStr) FooFunc1() {} is OK as well, but this method cannot modify members of n;
+
 * type assertion:
 
   ```
@@ -61,3 +63,10 @@
   ```
 
 * `error` is an interface defined in package `errors`, only one method Error() defined;
+
+* visibility/private/public is on package level in Go
+* if method receiver is pointer, then it is this pointer type that implements the interface, not the struct;
+* slice struct is passed by value b/w functions, but the memory of the elements is passed by reference;
+
+* treat slice as passed by reference, i.e, pass a slice into a function, if we delete items of slice inside
+  the function, the outer function would know;
