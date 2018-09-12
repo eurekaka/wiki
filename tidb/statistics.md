@@ -45,3 +45,10 @@
   Handle::UpdateStatsByLocalFeedback -> UpdateHistogram -> splitBuckets //match splitted ranges with bucket boundaries
   														|_ mergeBuckets
   ```
+
+* no matter what physical plan is chosen for a node, its statistics would not change; thus `stats` field is in basePlan;
+* `buildDataSource` would first fill `statisticTable` by `getStatsTable`, this pointer would be used in
+  `DataSource::deriveStats -> DataSource::getStatsByFilter -> HistColl::GenerateHistCollFromColumnInfo` to generate a new
+  HistColl struct, and save it in `statsInfo::histColl`; that is to say, we make a copy of the `DataSource::statisticTable`
+  and substitute column ID with corresponding UniqueID, then save this copy into `DataSource::stats::histColl`, this is
+  for further propagation of the statistics to upper node; previously, only `DataSource` would use this table statistics;

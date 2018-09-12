@@ -16,7 +16,7 @@
                                           |_ clientConn::handleQuery -> clientConn::QueryCtx::Execute
                                                                      |_ clientConn::writeResultset
 
-  TiDBContext::Execute -> session::Execute //jump into session package -> session::execute
+  TiDBContext::Execute -> session::Execute -> session::execute
   Session interface is the abstrack of SQL engine procedures
   session::execute -> session::prepareTxnCtx
                    |_ session::ParseSQL

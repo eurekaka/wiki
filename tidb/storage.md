@@ -23,3 +23,6 @@
 * only int primary key of one column is chosen as RowID/handle;
 * seems no catalog table; catalog info is stored as serialized bytes in key-value, key is table id
   or database id, but how about users catalog?
+
+* in Tidb, 8 bytes to store integer/float-point values, 16 bytes to store datetime/timestamp values
+  and 40 bytes to store decimal values;

@@ -3,25 +3,28 @@
   LogicalJoin::PredicatePushDown -> simplifyOuterJoin -> simplifyOuterJoin(innerPlan/outerPlan)
                                  |                    |_ foreach predicates(CNF) isNullRejected(innerTable.Schema()) -> EvaluateExprWithNull //func isstrict not considered
                                  |_ getCartesianJoinGroup //get base tables if all joins are cartesian join, and no Straight join and no prefered join type
-                                 |_ joinReOrderSolver::reorderJoin -> traverse conds, split them into 2 classes, one for join, the other for filter, build join edge and estimate rows of each DataSource based on these two classes respectively
+                                 |_ joinReOrderSolver::reorderJoin -> traverse conds, split them into 2 classes, one for join, the other for filter, build join edge, and estimate rows of each DataSource based on these two classes **respectively**
                                  |                                 |_ fill rate of each join edge
                                  |                                 |_ Sort DataSource and join edge for each DataSource
                                  |                                 |_ joinReOrderSolver::walkGraphAndComposeJoin //build new join trees; XXX should break for loop in this function when one node is chosen to join?
                                  |                                 |_ joinReOrderSolver::makeBushyJoin //build a single bushy join tree from generated join trees
-                                 |_ extractOnCondition
+								 |_ ExtractFiltersFromDNFs //extract common expression in all DNF items, e.g, (a = 1 and b = 1) or (a = 1 and a = 1 and b = 1) or (a = 1 and b = 2) => [(b = 1) or (b = 1) or (b = 2), common: (a = 1)] ,the common part would be ANDed with remained, i.e, ((b = 1) or (b = 1) or (b = 2)) AND (a = 1)
+								 |_ [PropagateConstant] //not for outer join, because no new conds added for outer join
+                                 |_ extractOnCondition //split Expression slice into eq, left, right and others, in CNF items unit
                                  |_ adjust leftCond/rightCond according to join type
                                  |_ leftPlan/rightPlan.PredicatePushDown(leftCond/rightCond)
                                  |_ addSelection
 
   ```
 
-* buildJoin would always generate a left deep join tree? i.e, Join is always in left deep tree form?
-  since getCartesianJoinGroup is directly called in LogicalJoin::PredicatePushDown, the answer should be yes.
+* buildJoin would always generate a left deep join tree, i.e, Join is always in left deep tree form
+  getCartesianJoinGroup is directly called in LogicalJoin::PredicatePushDown, this is another proof.
+  this left deep tree is actually formed by parser;
 
 * joinReOrderSolver::reorderJoin makes no sense at all; statistics and selectivity not considered; this function is ugly
-  join optimization of TiDB is not optimal, reorderJoin decide the join order, and combinations, while baseLogicalPlan::findBestTask
-  decide implementations of each join node and DataSource(and other operators) in recursive style; join reorder only applies for
-  cartesian join query; PG generates optimal join plan due to the Dynamic Programing implementation;
+  join optimization of TiDB is not optimal, reorderJoin decide the join order, and combinations, while
+  baseLogicalPlan::findBestTask decide implementations of each join node and DataSource(and other operators) in
+  recursive style; join reorder only applies for cartesian join query;
 
 * ppd would terminate when coming across LogicalLimit and LogicalMaxOneRow
   for LogicalMaxOneRow, consider this query:
@@ -67,4 +70,59 @@
   - ScalarFunction
   - CorrelatedColumn: subclass of Column
 
-* decorrelateSolver is to convert LogicalApply of incorrelated inner plan into InnerJoin;
+* decorrelateSolver is to convert LogicalApply of incorrelated inner plan into InnerJoin; for LogicalApply,
+  we must use NLJ, while for LogicalJoin, we have other choices; if inner plan is a LogicalSelection, we can
+  pull this selection into join condition and decorrelate the columns in the filter, thus make it possible to
+  avoid LogicalApply;
+
+* `expression.Column::UniqueID` is unique in session level, generated in `buildDataSource`;
+  `expression.Column::ID == model.ColumnInfo::ID`, `expression.Column::ColName == model.ColumnInfo::Name`
+  `model.ColumnInfo` is from information schema, `expression.Column` would be saved in `logicalSchemaProducer::schema`;
+
+* `planBuider::rewrite` has an argument `asScalar`, this is used in deeper level for rewriting subquery in expressions,
+  expressions with subquery may be converted into semi join later, ordinary semi join would return the rows of the outer
+  plan, or nil, but if this subquery is used as expressions, not join results, we only care about whether the outer tuple
+  has match or not, we does not care about the outer tuples, in this case, we call this requirement `asScalar`, if `asScalar`
+  is true, we only output the scalar result true or false for the semi join; @sa buildSemiJoin
+
+  Whether this passed in argument should be `asScalar` or not is decided by the caller, for example, in `buildJoin`,
+  we pass false, because we do care about the semi join tuples in this case;
+
+* expression.Schema stores the pointer of expression.Column, so one Column is shared in the plan tree; few nodes would
+  allocate new Column struct, such as `buildDataSource`, and `buildProjection`, other nodes would use Column pointers
+  built previously. That is why we build map between Column UniqueID and index ID in `GenerateHistCollFromColumnInfo`
+
+  `ColumnIndex` function uses UniqueID to compare two Column pointers;
+
+* we have 7 join types, but `SemiJoin`, `AntiSemiJoin`, `LeftOuterSemiJoin` and `AntiLeftOuterSemiJoin` are internally
+  built for `IN`, `EXISTS`, they are all built in `buildSemiJoin` during expression rewriting. Thus, in `buildJoin`, we
+  only consider `InnerJoin`, `LeftOuterJoin` and `RightOuterJoin`;
+
+* In MySQL syntax, cross join equals join, and inner join;
+  `natural join` means `using` all common columns of left and right table, `natural` keyword cannot omit;
+  ast.Join::NaturalJoin and ast.Join::StraightJoin is set in parser;
+
+* `buildNaturalJoin` and `buildUsingClause` would build equal conds for join columns, and put these conds into
+  `OtherConditions` of `LogicalPlan`; for `ON` clause, first convert ast.ExprNode to expression.Expression(in CNF),
+  then `SplitCNFItems` and `attachOnConds`, `attachOnConds` would call `extractOnConditions`
+
+* In predicate pushdown, for left outer join, on condition of left table should not be pushed down, and it should be
+  be kept in on condition; on condition of equal is unable to pushdown, and it should be kept in on condition; on
+  condition of right table should be pushed down to right child plan; on condition of both tables is unable to
+  pushdown, and should be kept in on condition;
+
+  where condition of left table can be pushed down to left child plan, where condition of equal is unable to pushdown,
+  and it cannot be in join condition either, return it to parent node to build LogicalSelection; where condition of right
+  table should NOT be pushed down, because it would effect match of left tuples in join, return it to parent node; where
+  condition of both tables is unable to pushdown, return it to parent;
+
+  to conclude, only where condition of left table and on condition of right table can be pushed down for left outer join;
+
+* Oracle has an optimization for left outer join:
+  ```
+  select t1.a, t1.b from t1 left join t2 on t1.a = t2.a;
+  ```
+  in this case, t2 is not needed in the projection, then if join key of t2 is unique, we can rewrite this query to:
+  ```
+  select t1.a, t1.b from t1;
+  ```
