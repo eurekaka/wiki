@@ -126,3 +126,5 @@
   ```
   select t1.a, t1.b from t1;
   ```
+
+* `simplifyOuterJoin` does not handle left outer semi join and left outer anti semi join;
