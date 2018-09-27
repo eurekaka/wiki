@@ -127,4 +127,5 @@
   select t1.a, t1.b from t1;
   ```
 
-* `simplifyOuterJoin` does not handle left outer semi join and left outer anti semi join;
+* `simplifyOuterJoin` does not handle left outer semi join and left outer anti semi join; the purpose of these 2
+  join types is to keep the no-match cases, so they cannot and should not be simplified to semi join or anti semi join;
