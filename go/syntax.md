@@ -70,3 +70,10 @@
 
 * treat slice as passed by reference, i.e, pass a slice into a function, if we delete items of slice inside
   the function, the outer function would know;
+
+* A field or method f of an anonymous field in a struct x is called promoted if x.f is a legal selector that
+  denotes that field or method f. Promoted fields act like ordinary fields of a struct except that they cannot
+  be used as field names in composite literals of the struct(i.e, in initialization).
+* a variable declared as map is nil by default, after `make`, it is not nil, but the len() is 0;
+* len(nil) is safe in golang, returns 0
+* it is safe to call nil.method() in golang, but if the mothod accesses fields of pointer, panic is raised;
