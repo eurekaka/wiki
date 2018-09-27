@@ -129,3 +129,5 @@
 
 * `simplifyOuterJoin` does not handle left outer semi join and left outer anti semi join; the purpose of these 2
   join types is to keep the no-match cases, so they cannot and should not be simplified to semi join or anti semi join;
+* `exists` is implemented by semi-join, and `not exists` is implemented by left outer semi join with a `Not` selection;
+  `in` is implemented by semi-join, and `not in` is implemented by anti-semi-join;
