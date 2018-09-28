@@ -100,3 +100,9 @@
   in `NestedLoopApplyExec::Next`, for each outer tuple, set the value of correlated column through `outerSchema`,
   then rerun the inner node; the difference of NestedLoopApplyExec b/w NLJ is the param setting from outer tuple;
   LogicalApply is a subclass of LogicalJoin!
+
+* query has priority in TiDB, if user has not set priority for this query explicitly, priority would be derived
+  in `buildExecutor` according to whether it is a point get plan or expensive plan; expensiveness is checked in
+  `Compile` by `isExpensiveQuery`, if row count of any plan nodes exceeds a threshold, it is treated as expensive;
+  if user explicitly specifies priority for query, TiDB would obey this hint and put it into corresponding queue;
+  Not like index hints, this is deterministic;

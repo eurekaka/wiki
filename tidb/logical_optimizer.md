@@ -81,12 +81,24 @@
 
 * `planBuider::rewrite` has an argument `asScalar`, this is used in deeper level for rewriting subquery in expressions,
   expressions with subquery may be converted into semi join later, ordinary semi join would return the rows of the outer
-  plan, or nil, but if this subquery is used as expressions, not join results, we only care about whether the outer tuple
+  plan, or nil, but if this subquery is used as argument of `ScalarFunction`, and the function only takes constant argument,
+  not column arugment(e.g, logic OR), that is to say, we only care about whether the outer tuple
   has match or not, we does not care about the outer tuples, in this case, we call this requirement `asScalar`, if `asScalar`
-  is true, we only output the scalar result true or false for the semi join; @sa buildSemiJoin
+  is true, we only output the scalar result true or false for the semi join;
+
+  if `asScalar` is true, in `buildSemiJoin`, we append an aux column in schema of semi join, and in upper level function
+  such as `handleInSubquery`, if this `PatternInExpr` is in `ScalarFunction` requring constant arg(e.g, OR), i.e, `asScalar`
+  is true, we return the aux column of semi join schema into stack, otherwise, we return the semi join plan into stack;
+
+  Note that in `handleInSubquery`, the built semi join is stored in `er.p`, the base plan is changed.
 
   Whether this passed in argument should be `asScalar` or not is decided by the caller, for example, in `buildJoin`,
   we pass false, because we do care about the semi join tuples in this case;
+
+  A good example to illustrate this part:
+  ```
+  explain select * from t1 where t1.b > 1 or t1.b in (select b from t2);
+  ```
 
 * expression.Schema stores the pointer of expression.Column, so one Column is shared in the plan tree; few nodes would
   allocate new Column struct, such as `buildDataSource`, and `buildProjection`, other nodes would use Column pointers
