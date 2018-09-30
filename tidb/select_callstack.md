@@ -69,3 +69,9 @@
                           |_ clientConn::writeResultSet -> clientConn::writeChunks -> tidbResultSet::Next -> ... -> selectResult::Next //read chan
                                                                                    |_ clientConn::writePacket
   ```
+
+* for in memory DB information\_schema and performance\_schema, the entry point of executor is:
+  ```
+  TableScanNext::Next -> TableScanNext::nextChunk4InfoSchema -> ::IterRecords
+  ```
+  as indicated in `perfSchemaTable::IterRecords`, all perfSchema tables return empty result;
