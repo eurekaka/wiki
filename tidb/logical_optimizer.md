@@ -143,3 +143,25 @@
   join types is to keep the no-match cases, so they cannot and should not be simplified to semi join or anti semi join;
 * `exists` is implemented by semi-join, and `not exists` is implemented by left outer semi join with a `Not` selection;
   `in` is implemented by semi-join, and `not in` is implemented by anti-semi-join;
+
+* Apply expresses correlated semantics, it can be semi join, inner join or left outer join; decorrelate tries to remove
+  apply and keep the semi join, inner join or left outer join;
+  semi join has fixed left/right nodes in exhaustPhysicalPlan, while inner join is not fixed, so we want to convert semi
+  join to inner join, but to keep the semantics of semi join, we has to add first\_row agg func to the join key, to
+  eliminate duplicates, and does not output inner table columns;
+  LooseIndexScan is a index scan implementation for semi join; by converting semi join to inner join, we still scans
+  the whole index, with LooseIndexScan, we remove duplicates in reader level, but using LooseIndexScan cannot
+  utilize outer-inner swap of inner join;
+  LooseIndexScan needs support from storage layer for jump in index scan;
+
+* aggregation can be pushed over join, e.g,
+  ```
+  select count(s.id) from t join s on t.id = s.t_id
+  => select sum(agg0) from t join (select count(id) as agg0, t_id from s group by t_id) as s on t.id = s.t_id
+  ```
+  rewrite count() to sum() of count()
+  agg pushdown does not benefit always, if t\_id is unique, we do one more redundant aggregation;
+
+* max/min without group by can be rewriten into order by limit;
+  for max/min with group by, first, stream agg with index is better than hash agg;
+  second, loose index scan can help a lot;
