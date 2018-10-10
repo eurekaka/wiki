@@ -77,3 +77,6 @@
 * a variable declared as map is nil by default, after `make`, it is not nil, but the len() is 0;
 * len(nil) is safe in golang, returns 0
 * it is safe to call nil.method() in golang, but if the mothod accesses fields of pointer, panic is raised;
+
+* `delete(map, key)` is no-op if map is nil or key does not exist in the map;
+  @sa https://golang.org/pkg/builtin/#delete
