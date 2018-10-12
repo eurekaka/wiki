@@ -4,3 +4,5 @@
   Close() is called;
 * UnionScanExec allocates chunk memory in Open(), no need to free them in Close(), since golang has GC; so
   UnionScanExec does not implement Close() and use baseExecutor::Close
+* PhysicalIndexJoin is also specially handled, inner plan is built directly in getIndexJoinByOuterIdx, and the
+  prop of inner child is marked nil, so ::findBestTask would quickly return for inner child;
